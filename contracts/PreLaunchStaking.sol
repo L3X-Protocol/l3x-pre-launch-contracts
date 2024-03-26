@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @notice This contract allows users to stake tokens and earn rewards for staking
  * @dev Only operators can add or remove tokens acceptable for staking
  */
-contract StakingContract is Ownable {
+contract PreLaunchStaking is Ownable {
   // Define events
   event Stake(address indexed user, address token, uint256 amount);
   event Unstake(address indexed user, address token, uint256 amount);
@@ -18,6 +18,9 @@ contract StakingContract is Ownable {
   event OperatorRemoved(address operator);
   event TokenAdded(address token);
   event TokenRemoved(address token);
+
+  // Array to keep track of accepted tokens for staking.
+  address[] private acceptedTokensArray;
 
   // Operators mapping
   mapping(address => bool) public operators;
@@ -28,11 +31,16 @@ contract StakingContract is Ownable {
   // Mapping to keep track of user stakes
   mapping(address => mapping(address => uint256)) private userStakes;
 
+  // Modifier to restrict access to operators
+  modifier onlyOperator() {
+    require(operators[msg.sender], "Not an operator");
+    _;
+  }
   /**
    * @notice Constructor sets the initial admin
    * @param initialOwner Address of the initial admin
    */
-  constructor(address initialOwner) Ownable(initialOwner) {
+  constructor(address initialOwner) {
     addOperator(initialOwner);
   }
 
@@ -40,7 +48,7 @@ contract StakingContract is Ownable {
    * @notice Function to add operators by admin
    * @param _operator Address of the operator to be added
    */
-  function addOperator(address _operator) external onlyOwner {
+  function addOperator(address _operator) public onlyOwner {
     operators[_operator] = true;
     emit OperatorAdded(_operator);
   }
