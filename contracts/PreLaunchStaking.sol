@@ -160,4 +160,15 @@ contract PreLaunchStaking is Ownable {
     }
     return (stakedTokens, stakedBalances);
   }
+
+  /**
+   * @notice A helper function to get balance of a user’s one staked
+   * @param _user Address of the user
+   * @param _token Address of the token
+   * @return uint256 representing staked balance
+   * @dev This function is used to get the balance of a user’s staked token
+   */
+  function getUserStakedBalance(address _user, address _token) external view returns (uint256) {
+    return userStakes[_user][_token];
+  }
 }
