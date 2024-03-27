@@ -13,9 +13,8 @@ import {
 } from "../../helper-hardhat-config";
 
 // Types
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { TokenStaking, TokenStaking__factory } from "../../typechain-types";
-import { BigNumber } from "ethers";
 
 // ----------
 
@@ -57,16 +56,22 @@ async function deployTokenStaking(chainId: number) {
     await ethers.getContractFactory("TokenStaking", deployer);
   log("Deploying Contract...");
   const tokenStaking: TokenStaking = await tokenStakingFactory.deploy();
-  await tokenStaking.deployed();
+  await tokenStaking.waitForDeployment();
 
-  log(`TokenStaking deployed to: ${tokenStaking.address}`);
+  const deployedAddress = await tokenStaking.getAddress();
+  log(`TokenStaking deployed to: ${deployedAddress}`);
   log("", "separator");
 
   if (!developmentChains.includes(network.name)) {
     // Verify Contract if it isnt in a development chain
     log("Verifying Contract", "title");
-    await tokenStaking.deployTransaction.wait(VERIFICATION_BLOCK_CONFIRMATIONS);
-    await verify(tokenStaking.address, []);
+
+    const txReceipt = tokenStaking.deploymentTransaction();
+    if(txReceipt) {
+      await txReceipt.wait(VERIFICATION_BLOCK_CONFIRMATIONS);
+    }
+
+    await verify(deployedAddress, []);
     log("verified successfully");
   }
 
@@ -85,7 +90,7 @@ async function deployTokenStaking(chainId: number) {
   if (!oldContracts[network.name]) {
     oldContracts[network.name] = {};
   }
-  oldContracts[network.name].TokenStaking = tokenStaking.address;
+  oldContracts[network.name].TokenStaking = deployedAddress;
   // Save data in our deployed-contracts file
   fs.writeFileSync(
     deployedContractsPath,

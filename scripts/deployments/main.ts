@@ -7,10 +7,9 @@
 import { network, run } from "hardhat";
 
 import deployTokenStaking from "./deployTokenStaking";
-import deployTokenReward from "./deployTokenReward";
-import deployDiscreteStakingRewards from "./deployPreLaunchStaking";
+import deployPreLaunchStaking from "./deployPreLaunchStaking";
 import { log } from "../../helper-functions";
-import { TokenStaking, TokenReward } from "../../typechain-types";
+import { TokenStaking } from "../../typechain-types";
 
 // ---------
 
@@ -25,15 +24,8 @@ async function main() {
   const tokenStaking: TokenStaking = await deployTokenStaking(chainId);
   log(`Deployed TokenStaking contract successfully`);
   log("", "separator");
-  const tokenReward: TokenReward = await deployTokenReward(chainId);
-  log(`Deployed TokenReward contract successfully`);
-  log("", "separator");
 
-  await deployDiscreteStakingRewards(
-    chainId,
-    tokenStaking.address,
-    tokenReward.address
-  );
+  await deployPreLaunchStaking(chainId);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

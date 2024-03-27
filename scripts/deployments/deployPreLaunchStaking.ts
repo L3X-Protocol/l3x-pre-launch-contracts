@@ -2,7 +2,6 @@
 import * as fs from "fs";
 import * as path from "path";
 import { ethers, network } from "hardhat";
-
 // Functions
 import { log, verify } from "../../helper-functions";
 
@@ -13,12 +12,11 @@ import {
 } from "../../helper-hardhat-config";
 
 // Types
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
-  DiscreteStakingRewards,
-  DiscreteStakingRewards__factory,
+  PreLaunchStaking,
+  PreLaunchStaking__factory,
 } from "../../typechain-types";
-import { BigNumber } from "ethers";
 
 // ---
 
@@ -42,14 +40,10 @@ type DeployedContracts = {
  * Deploy Staking Rewards Contract
  *
  * @param chainId the Id of the network we will deploy on it
- * @param tokenStaking the address of the staking ERC20 token
- * @param tokenReward the address of the reward ERC20 token
  * @returns the deployed contract
  */
-async function deployDiscreteStakingRewards(
-  chainId: number,
-  tokenStaking: string,
-  tokenReward: string
+async function deployPreLaunchStaking(
+  chainId: number
 ) {
   const [deployer]: SignerWithAddress[] = await ethers.getSigners();
 
@@ -62,23 +56,24 @@ async function deployDiscreteStakingRewards(
 
   // Deploying The Contract
   log(`Deploying contract with the account: ${deployer.address}`);
-  const discreteStakingRewardsFactory: DiscreteStakingRewards__factory =
-    await ethers.getContractFactory("DiscreteStakingRewards", deployer);
+  const preLaunchStakingFactory: PreLaunchStaking__factory = await ethers.getContractFactory("PreLaunchStaking", deployer);
   log("Deploying Contract...");
-  const discreteStakingRewards: DiscreteStakingRewards =
-    await discreteStakingRewardsFactory.deploy(tokenStaking, tokenReward);
-  await discreteStakingRewards.deployed();
+  const preLaunchStaking: PreLaunchStaking = await preLaunchStakingFactory.deploy(deployer.address);
+  await preLaunchStaking.waitForDeployment();
 
-  log(`StakingRewards deployed to: ${discreteStakingRewards.address}`);
+  const deployedAddress = await preLaunchStaking.getAddress();
+  log(`PreLaunch Staking deployed to: ${deployedAddress}`);
   log("", "separator");
 
   if (!developmentChains.includes(network.name)) {
     // Verify Contract if it isnt in a development chain
     log("Verifying Contract", "title");
-    await discreteStakingRewards.deployTransaction.wait(
-      VERIFICATION_BLOCK_CONFIRMATIONS
-    );
-    await verify(discreteStakingRewards.address, [tokenStaking, tokenReward]);
+
+    const txReceipt = preLaunchStaking.deploymentTransaction();
+    if (txReceipt) {
+      await txReceipt.wait(VERIFICATION_BLOCK_CONFIRMATIONS);
+    }
+    await verify(deployedAddress, [deployer.address]);
     log("verified successfully");
   }
 
@@ -97,8 +92,7 @@ async function deployDiscreteStakingRewards(
   if (!oldContracts[network.name]) {
     oldContracts[network.name] = {};
   }
-  oldContracts[network.name].DiscreteStakingRewards =
-    discreteStakingRewards.address;
+  oldContracts[network.name].PreLaunchStaking = deployedAddress;
   // Save data in our deployed-contracts file
   fs.writeFileSync(
     deployedContractsPath,
@@ -106,7 +100,7 @@ async function deployDiscreteStakingRewards(
   );
   log("Stored Succesfully");
   log("", "separator");
-  return discreteStakingRewards;
+  return preLaunchStaking;
 }
 
-export default deployDiscreteStakingRewards;
+export default deployPreLaunchStaking;

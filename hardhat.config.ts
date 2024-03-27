@@ -2,15 +2,12 @@ import * as dotenv from "dotenv";
 
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-verify";
 
 dotenv.config();
-
-// const MAINNET_RPC_URL =
-//   process.env.MAINNET_RPC_URL ||
-//   'https://eth-mainnet.alchemyapi.io/v2/your-api-key';
-// const POLYGON_MAINNET_RPC_URL =
-//   process.env.POLYGON_MAINNET_RPC_URL || 'https://polygon-mainnet.alchemyapi.io/v2/your-api-key';
-const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL;
+const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
+const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || `https://eth-mainnet.g.alchemyapi.io/v2/${ALCHEMY_KEY}`;
+const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 // // optional
@@ -19,10 +16,9 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 // Your API key for Etherscan, obtain one at https://etherscan.io/
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "Your etherscan API key";
-// const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || 'Your polygonscan API key';
 
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "sepolia",
   networks: {
     hardhat: {
       // hardfork: 'merge',
@@ -47,27 +43,21 @@ const config: HardhatUserConfig = {
       //   },
       chainId: 11155111,
     },
-    // mainnet: {
-    //   url: MAINNET_RPC_URL,
-    //   accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
-    //   //   accounts: {
-    //   //     mnemonic: MNEMONIC,
-    //   //   },
-    //   chainId: 1,
-    // },
-    // polygon: {
-    //   url: POLYGON_MAINNET_RPC_URL,
-    //   accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
-    //   chainId: 137,
-    // },
+    mainnet: {
+      url: MAINNET_RPC_URL,
+      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
+      //   accounts: {
+      //     mnemonic: MNEMONIC,
+      //   },
+      chainId: 1,
+    },
   },
   etherscan: {
     // yarn hardhat verify --network <NETWORK> <CONTRACT_ADDRESS> <CONSTRUCTOR_PARAMETERS>
     apiKey: {
       // npx hardhat verify --list-networks
       sepolia: ETHERSCAN_API_KEY,
-      mainnet: ETHERSCAN_API_KEY,
-      // polygon: POLYGONSCAN_API_KEY,
+      mainnet: ETHERSCAN_API_KEY
     },
   },
   gasReporter: {
