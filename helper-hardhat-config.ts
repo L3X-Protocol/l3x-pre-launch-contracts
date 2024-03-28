@@ -31,6 +31,7 @@ export const ADDRESS_ZERO: string = ethers.ZeroAddress;
 export const REWARD_AMOUNT: BigNumberish = ethers.parseUnits("1000");
 export const ONE_TOKEN = ethers.parseUnits("1");
 export const STAKING_AMOUNT: BigNumberish = ethers.parseUnits("100"); // 100 tokens
+export const EXCCESS_STAKING_AMOUNT: BigNumberish = ethers.parseUnits("101"); // 101 tokens
 
 export const developmentChains: string[] = ["hardhat", "localhost"];
 export const VERIFICATION_BLOCK_CONFIRMATIONS = 6;

@@ -14,6 +14,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import {
   REWARD_AMOUNT,
   STAKING_AMOUNT,
+  EXCCESS_STAKING_AMOUNT,
   developmentChains,
 } from "../../helper-hardhat-config";
 
@@ -134,8 +135,6 @@ describe("PreLaunchStaking", function () {
       const { deployer, preLaunchStaking, tokenStaking } =
         await loadFixture(deployPreLaunchStakingFixture);
 
-      // await listStake(preLaunchStaking, tokenReward);
-
       await mintAndStake(preLaunchStaking, tokenStaking, staker);
 
       const contractBalance: BigNumberish = await tokenStaking
@@ -176,233 +175,88 @@ describe("PreLaunchStaking", function () {
 
   });
 
-  // describe("#withdraw", function () {
-  //   it("should emit `withdraw` event on successful withdrawing", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
+  describe("#unstake", function () {
+    it("should emit `unstake` event on successful unstaking", async function () {
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+      await mintAndStake(preLaunchStaking, tokenStaking, staker);
 
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
+      const tx: ContractTransactionResponse =  
+        await preLaunchStaking
+          .connect(staker)
+          .unstake(tokenStaking.getAddress(), STAKING_AMOUNT);
 
-  //     await expect(preLaunchStaking.connect(staker).withdraw(STAKING_AMOUNT))
-  //       .to.emit(preLaunchStaking, "Withdraw")
-  //       .withArgs(staker.address, STAKING_AMOUNT);
-  //   });
+      const txReceipt = await tx.wait(1) as ContractTransactionReceipt;
 
-  //   it("should transfer tokens from the contract to the `staker`", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
+      const blockNumber = txReceipt.blockNumber;
+      
+      const block = await ethers.provider.getBlock(blockNumber);
+      const currentTimestamp = block?.timestamp;
+      
+      await expect(tx).to.emit(preLaunchStaking, "Unstake").withArgs(staker.address, tokenStaking.getAddress(), STAKING_AMOUNT, currentTimestamp);
+    });
 
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
+    it("should transfer tokens from the contract to the `staker`", async function () {
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+      await mintAndStake(preLaunchStaking, tokenStaking, staker);
 
-  //     await increaseTime(ONE_DAY);
 
-  //     await preLaunchStaking.connect(staker).withdraw(STAKING_AMOUNT);
+      await preLaunchStaking.connect(staker).unstake(tokenStaking.getAddress(), STAKING_AMOUNT);
 
-  //     const contractBalance: BigNumber = await tokenStaking.balanceOf(
-  //       preLaunchStaking.address
-  //     );
-  //     assert.equal(contractBalance.toString(), "0");
-  //   });
+      const contractBalance: BigNumberish = await tokenStaking.balanceOf(
+        preLaunchStaking.getAddress()
+      );
+      assert.equal(contractBalance.toString(), "0");
+    });
 
-  //   it("should decrease the balance of the staker in the contract", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
+    it("should decrease the balance of the staker in the contract", async function () {
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
 
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
+      await mintAndStake(preLaunchStaking, tokenStaking, staker);
 
-  //     await preLaunchStaking.connect(staker).withdraw(STAKING_AMOUNT);
-  //     const stakerBalance: BigNumber = await preLaunchStaking.balanceOf(
-  //       deployer.address
-  //     );
-  //     assert.equal(stakerBalance.toString(), "0");
-  //   });
+      await preLaunchStaking.connect(staker).unstake(tokenStaking.getAddress(), STAKING_AMOUNT);
+      const stakerBalance: BigNumberish = await preLaunchStaking.getUserStakedBalance(
+        staker,
+        tokenStaking.getAddress()
+      );
+      assert.equal(stakerBalance.toString(), "0");
+    });
 
-  //   it("should decrease the `totalSupply`", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
 
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
+    it("reverts if the amount equals zero", async function () {
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
 
-  //     await preLaunchStaking.connect(staker).withdraw(STAKING_AMOUNT);
+      await mintAndStake(preLaunchStaking, tokenStaking, staker);
 
-  //     const totalSupply: BigNumber = await preLaunchStaking.getTotalSupply();
-  //     assert.equal(totalSupply.toString(), "0");
-  //   });
+      await expect(
+        preLaunchStaking.connect(staker).unstake(tokenStaking.getAddress(), 0)
+      ).to.be.revertedWith(
+        "UnStaking: Zero amount"
+      );
+    });
 
-  //   it("should set updateAt variable to the current time", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
+    it("reverts if the user's unstaking amount is insufficient", async function () {
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
 
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
+      await mintAndStake(preLaunchStaking, tokenStaking, staker);
 
-  //     await increaseTime(ONE_DAY);
+      // require(userStakes[msg.sender][_token] >= _amount, "Insufficient balance to unstake");
+      await expect(
+        preLaunchStaking.connect(staker).unstake(tokenStaking.getAddress(), EXCCESS_STAKING_AMOUNT)
+      ).to.be.revertedWith(
+        "Insufficient balance to unstake"
+      );
+    });
 
-  //     const tx: ContractTransaction = await preLaunchStaking
-  //       .connect(staker)
-  //       .withdraw(STAKING_AMOUNT);
+  });
 
-  //     const txReciept: ContractReceipt = await tx.wait(1);
-
-  //     const blockNumber = txReciept.blockNumber;
-  //     const block = await ethers.provider.getBlock(blockNumber);
-  //     const currentTimestamp = block.timestamp;
-
-  //     const updateAt: BigNumber = await preLaunchStaking.getUpdatedAt();
-  //     assert.equal(updateAt.toString(), currentTimestamp.toString());
-  //   });
-
-  //   it("should update `rewardPerToken` and `userRewardPerTokenPaid`", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
-
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
-
-  //     await increaseTime(ONE_DAY);
-
-  //     await preLaunchStaking.connect(staker).withdraw(STAKING_AMOUNT);
-
-  //     const rewardPerToken: BigNumber =
-  //       await preLaunchStaking.getRewardPerToken();
-  //     const userRewardPerTokenPaid: BigNumber =
-  //       await preLaunchStaking.userRewardPerTokenPaid(staker.address);
-
-  //     const oneDayMulOneToken = ONE_TOKEN.mul(ONE_DAY);
-
-  //     assert(rewardPerToken.gte(oneDayMulOneToken.div(STAKING_AMOUNT)));
-  //     assert(userRewardPerTokenPaid.gte(oneDayMulOneToken.div(STAKING_AMOUNT)));
-  //     assert.equal(
-  //       rewardPerToken.toString(),
-  //       userRewardPerTokenPaid.toString()
-  //     );
-  //   });
-
-  //   it("should update `rewards[staker]` to be the amount of tokens earned for staking", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
-
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
-
-  //     await increaseTime(ONE_DAY);
-
-  //     await preLaunchStaking.connect(staker).withdraw(STAKING_AMOUNT);
-
-  //     const userReward: BigNumber = await preLaunchStaking.rewards(
-  //       staker.address
-  //     );
-
-  //     const oneDayMulOneToken = ONE_TOKEN.mul(ONE_DAY);
-
-  //     assert(userReward.gte(oneDayMulOneToken));
-  //   });
-
-  //   it("reverts if the amount equals zero", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
-
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
-
-  //     await expect(
-  //       preLaunchStaking.connect(staker).withdraw(0)
-  //     ).to.be.revertedWithCustomError(
-  //       preLaunchStaking,
-  //       "PreLaunchStaking__ZeroWithdrawAmount"
-  //     );
-  //   });
-  // });
-
-  // describe("#claimRewards", function () {
-  //   it("should emit `RewardsClaimed` event on successful withdrawing", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
-
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
-
-  //     await increaseTime(ONE_DAY);
-
-  //     const userRewards = await preLaunchStaking.getUserEarnings(staker.address);
-
-  //     // the value claimed may be greater than `userRewards`, as updateReward modifier is fired when firing claimRewards function
-  //     // which will set rewards to the account, and some seconds may pass for executing
-  //     await expect(preLaunchStaking.connect(staker).claimRewards()).to.emit(
-  //       preLaunchStaking,
-  //       "RewardsClaimed"
-  //     );
-  //     // .withArgs(staker.address, userRewards);
-  //   });
-
-  //   it("should set `rewards[staker]` to zero", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
-
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
-
-  //     await increaseTime(ONE_DAY);
-
-  //     await preLaunchStaking.connect(staker).claimRewards();
-
-  //     const userRewardAfterClaiming: BigNumber = await preLaunchStaking.rewards(
-  //       staker.address
-  //     );
-
-  //     assert.equal(userRewardAfterClaiming.toString(), "0");
-  //   });
-
-  //   it("should set transfer rewardTokens to the staker", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
-
-  //     await listStake(preLaunchStaking, tokenReward);
-  //     await mintAndStake(preLaunchStaking, tokenStaking, staker);
-
-  //     await increaseTime(ONE_DAY);
-
-  //     const userRewards = await preLaunchStaking.getUserEarnings(staker.address);
-
-  //     await preLaunchStaking.connect(staker).claimRewards();
-
-  //     const stakerRewardTokenBalance: BigNumber = await tokenReward.balanceOf(
-  //       staker.address
-  //     );
-
-  //     // the value claimed may be greater than `userRewards`, as updateReward modifier is fired when firing claimRewards function
-  //     // which will set rewards to the account, and some seconds may pass for executing
-  //     assert(stakerRewardTokenBalance.gte(userRewards));
-  //   });
-
-  //   it("reverts if user has no reward tokens in his balance", async function () {
-  //     const [, staker]: SignerWithAddress[] = await ethers.getSigners();
-  //     const { deployer, preLaunchStaking, tokenStaking, tokenReward } =
-  //       await loadFixture(deployPreLaunchStakingFixture);
-
-  //     await listStake(preLaunchStaking, tokenReward);
-
-  //     await expect(
-  //       preLaunchStaking.connect(staker).claimRewards()
-  //     ).to.be.revertedWithCustomError(
-  //       preLaunchStaking,
-  //       "PreLaunchStaking__ZeroRewards"
-  //     );
-  //   });
-  // });
 });

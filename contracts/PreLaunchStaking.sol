@@ -101,7 +101,7 @@ contract PreLaunchStaking is Ownable {
    * @param _amount Amount of the token to be unstaked
    */
   function unstake(address _token, uint256 _amount) external {
-    require(_amount > 0, "Staking: Zero amount");
+    require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][_token] >= _amount, "Insufficient balance to unstake");
     userStakes[msg.sender][_token] -= _amount;
     IERC20(_token).transfer(msg.sender, _amount);
