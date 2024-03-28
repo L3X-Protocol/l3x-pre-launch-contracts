@@ -12,12 +12,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  */
 contract PreLaunchStaking is Ownable {
   // Define events
-  event Stake(address indexed user, address token, uint256 amount);
-  event Unstake(address indexed user, address token, uint256 amount);
-  event OperatorAdded(address operator);
-  event OperatorRemoved(address operator);
-  event TokenAdded(address token);
-  event TokenRemoved(address token);
+  event Stake(address indexed user, address indexed token, uint256 amount, uint256 time);
+  event Unstake(address indexed user, address indexed token, uint256 amount, uint256 time);
+  event OperatorAdded(address indexed operator);
+  event OperatorRemoved(address indexed operator);
+  event TokenAdded(address indexed token);
+  event TokenRemoved(address indexed token);
 
   // Array to keep track of accepted tokens for staking.
   address[] private acceptedTokensArray;
@@ -65,14 +65,9 @@ contract PreLaunchStaking is Ownable {
   /**
    * @notice Operators can add a new token to accept for staking
    * @param _token Address of the token to be added
-   * @param _initialStake Amount of the token to be staked initially
    */
-  function addToken(address _token, uint256 _initialStake) external onlyOperator {
+  function addToken(address _token) external onlyOperator {
     require(!acceptedTokens[_token], "Token already accepted");
-    require(_initialStake > 0, "Initial stake must be greater than 0");
-
-    IERC20(_token).transferFrom(msg.sender, address(this), _initialStake);
-
     acceptedTokens[_token] = true;
     emit TokenAdded(_token);
   }
@@ -93,10 +88,11 @@ contract PreLaunchStaking is Ownable {
    * @param _amount Amount of the token to be staked
    */
   function stake(address _token, uint256 _amount) external {
+    require(_amount > 0, "Staking: Zero amount");
     require(acceptedTokens[_token], "Token not accepted for staking");
     IERC20(_token).transferFrom(msg.sender, address(this), _amount);
     userStakes[msg.sender][_token] += _amount;
-    emit Stake(msg.sender, _token, _amount);
+    emit Stake(msg.sender, _token, _amount, block.timestamp);
   }
 
   /**
@@ -105,10 +101,11 @@ contract PreLaunchStaking is Ownable {
    * @param _amount Amount of the token to be unstaked
    */
   function unstake(address _token, uint256 _amount) external {
+    require(_amount > 0, "Staking: Zero amount");
     require(userStakes[msg.sender][_token] >= _amount, "Insufficient balance to unstake");
     userStakes[msg.sender][_token] -= _amount;
     IERC20(_token).transfer(msg.sender, _amount);
-    emit Unstake(msg.sender, _token, _amount);
+    emit Unstake(msg.sender, _token, _amount, block.timestamp);
   }
 
   /**
