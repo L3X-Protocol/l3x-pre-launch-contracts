@@ -4,7 +4,7 @@
     "PreLaunchStaking": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
   },
   "sepolia": {
-    "TokenStaking": "0x32cF9C7b97e090c80D647A4142f526c6d1873ef6",
-    "PreLaunchStaking": "0xa0a4Af4696Ee0fE3248dE959CAa52Dd5418595d7"
+    "TokenStaking": "0x3951c24e3B72d2aFc98ee3D8d01A21d040022e34",
+    "PreLaunchStaking": "0x91E940dC9AB8eC750ba4A484585327e889C99988"
   }
 }
