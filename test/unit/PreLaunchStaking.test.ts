@@ -278,7 +278,7 @@ describe("PreLaunchStaking", function () {
   });
 
   describe("#tokenWhitelist", function () {
-    it("reverts if the msg.sender is not operator", async function () {
+    it("reverts if the caller  is not operator", async function () {
       const [, staker]: SignerWithAddress[] = await ethers.getSigners();
       const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
         await loadFixture(deployPreLaunchStakingFixture);
@@ -354,6 +354,89 @@ describe("PreLaunchStaking", function () {
         ).to.be.revertedWith(
           "removeToken: Token not found"
         );
+    });
+  });
+
+  describe("#operatorWhitelist", function () {
+    it("reverts if the caller is not owner", async function () {
+      const [, user1]: SignerWithAddress[] = await ethers.getSigners();
+      const [, user2]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      await expect(
+          preLaunchStaking.connect(user1).addOperator(user2.getAddress())
+        ).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+      await expect(
+          preLaunchStaking.connect(user1).addOperator(deployer.getAddress())
+        ).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+    });
+
+    it("operator should be able to add a token ", async function () {
+      const [, operator]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      const tx: ContractTransactionResponse =  
+        await preLaunchStaking
+          .connect(deployer)
+          .addOperator(operator.getAddress());
+
+      const tx_addtoken: ContractTransactionResponse =  
+          await preLaunchStaking
+            .connect(operator)
+            .addToken(secondTokenStaking.getAddress());
+        
+      await expect(tx_addtoken).to.emit(preLaunchStaking, "TokenAdded").withArgs(secondTokenStaking.getAddress());
+
+      const allAcceptedTokens = await preLaunchStaking.getAllAcceptedTokens();
+      const secondTokenStakingAddress = await secondTokenStaking.getAddress();
+      assert.include(allAcceptedTokens, secondTokenStakingAddress);
+      
+    });
+
+    it("should emit `OperatorAdded` event on successful addOperator", async function () {
+      const [, operator]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      const tx: ContractTransactionResponse =  
+        await preLaunchStaking
+          .connect(deployer)
+          .addOperator(operator.getAddress());
+
+      const txReceipt = await tx.wait(1) as ContractTransactionReceipt;
+
+      const blockNumber = txReceipt.blockNumber;
+      
+      const block = await ethers.provider.getBlock(blockNumber);
+      const currentTimestamp = block?.timestamp;
+      
+      await expect(tx).to.emit(preLaunchStaking, "OperatorAdded").withArgs(operator.getAddress());
+    });
+
+    it("should emit `OperatorAdded` event on successful addOperator", async function () {
+      const [, operator]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      const tx: ContractTransactionResponse =  
+        await preLaunchStaking
+          .connect(deployer)
+          .removeOperator(operator.getAddress());
+
+      const txReceipt = await tx.wait(1) as ContractTransactionReceipt;
+
+      const blockNumber = txReceipt.blockNumber;
+      
+      const block = await ethers.provider.getBlock(blockNumber);
+      const currentTimestamp = block?.timestamp;
+      
+      await expect(tx).to.emit(preLaunchStaking, "OperatorRemoved").withArgs(operator.getAddress());
     });
   });
 });
