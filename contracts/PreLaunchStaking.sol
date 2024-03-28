@@ -67,7 +67,7 @@ contract PreLaunchStaking is Ownable {
    * @param _token Address of the token to be added
    */
   function addToken(address _token) external onlyOperator {
-    require(!acceptedTokens[_token], "Token already accepted");
+    require(!acceptedTokens[_token], "addToken: Token already whitelisted");
     acceptedTokens[_token] = true;
     emit TokenAdded(_token);
   }
@@ -77,7 +77,7 @@ contract PreLaunchStaking is Ownable {
    * @param _token Address of the token to be removed
    */
   function removeToken(address _token) external onlyOperator {
-    require(acceptedTokens[_token], "Token not accepted");
+    require(acceptedTokens[_token], "removeToken: Token not found");
     acceptedTokens[_token] = false;
     emit TokenRemoved(_token);
   }
@@ -89,7 +89,7 @@ contract PreLaunchStaking is Ownable {
    */
   function stake(address _token, uint256 _amount) external {
     require(_amount > 0, "Staking: Zero amount");
-    require(acceptedTokens[_token], "Token not accepted for staking");
+    require(acceptedTokens[_token], "Staking: Token not accepted for staking");
     IERC20(_token).transferFrom(msg.sender, address(this), _amount);
     userStakes[msg.sender][_token] += _amount;
     emit Stake(msg.sender, _token, _amount, block.timestamp);
@@ -102,7 +102,7 @@ contract PreLaunchStaking is Ownable {
    */
   function unstake(address _token, uint256 _amount) external {
     require(_amount > 0, "UnStaking: Zero amount");
-    require(userStakes[msg.sender][_token] >= _amount, "Insufficient balance to unstake");
+    require(userStakes[msg.sender][_token] >= _amount, "UnStaking: Insufficient balance to unstake");
     userStakes[msg.sender][_token] -= _amount;
     IERC20(_token).transfer(msg.sender, _amount);
     emit Unstake(msg.sender, _token, _amount, block.timestamp);

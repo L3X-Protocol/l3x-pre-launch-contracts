@@ -43,6 +43,7 @@ describe("PreLaunchStaking", function () {
     deployer: SignerWithAddress;
     preLaunchStaking: PreLaunchStaking;
     tokenStaking: TokenStaking;
+    secondTokenStaking: TokenStaking;
   };
   async function deployPreLaunchStakingFixture(): Promise<DeployFixture> {
     const [deployer]: SignerWithAddress[] = await ethers.getSigners();
@@ -53,6 +54,9 @@ describe("PreLaunchStaking", function () {
     const tokenStaking: TokenStaking = await tokenStakingFactory.deploy();
     await tokenStaking.waitForDeployment();
 
+    const secondTokenStaking: TokenStaking = await tokenStakingFactory.deploy();
+    await secondTokenStaking.waitForDeployment();
+
 
     const preLaunchStakingFactory: PreLaunchStaking__factory =
       await ethers.getContractFactory("PreLaunchStaking", deployer);
@@ -60,7 +64,7 @@ describe("PreLaunchStaking", function () {
     await preLaunchStaking.waitForDeployment();
 
     preLaunchStaking.addToken(tokenStaking.getAddress());
-    return { deployer, preLaunchStaking, tokenStaking };
+    return { deployer, preLaunchStaking, tokenStaking, secondTokenStaking };
   }
 
 
@@ -173,6 +177,23 @@ describe("PreLaunchStaking", function () {
       );
     });
 
+    it("reverts if the token is not in the whitelist", async function () {
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      await tokenStaking.connect(staker).mint(STAKING_AMOUNT);
+      await tokenStaking
+        .connect(staker)
+        .approve(preLaunchStaking.getAddress(), STAKING_AMOUNT);
+
+      await expect(
+        preLaunchStaking.connect(staker).stake(secondTokenStaking.getAddress(), STAKING_AMOUNT)
+      ).to.be.revertedWith(
+        "Staking: Token not accepted for staking"
+      );
+    });
+
   });
 
   describe("#unstake", function () {
@@ -227,7 +248,6 @@ describe("PreLaunchStaking", function () {
       assert.equal(stakerBalance.toString(), "0");
     });
 
-
     it("reverts if the amount equals zero", async function () {
       const [, staker]: SignerWithAddress[] = await ethers.getSigners();
       const { deployer, preLaunchStaking, tokenStaking } =
@@ -249,14 +269,91 @@ describe("PreLaunchStaking", function () {
 
       await mintAndStake(preLaunchStaking, tokenStaking, staker);
 
-      // require(userStakes[msg.sender][_token] >= _amount, "Insufficient balance to unstake");
       await expect(
         preLaunchStaking.connect(staker).unstake(tokenStaking.getAddress(), EXCCESS_STAKING_AMOUNT)
       ).to.be.revertedWith(
-        "Insufficient balance to unstake"
+        "UnStaking: Insufficient balance to unstake"
       );
     });
-
   });
 
+  describe("#tokenWhitelist", function () {
+    it("reverts if the msg.sender is not operator", async function () {
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      await expect(
+          preLaunchStaking.connect(staker).addToken(secondTokenStaking.getAddress())
+        ).to.be.revertedWith(
+          "Not an operator"
+        );
+
+      await expect(
+          preLaunchStaking.connect(staker).removeToken(tokenStaking.getAddress())
+        ).to.be.revertedWith(
+          "Not an operator"
+        );
+    });
+
+    it("should emit `TokenAdded` event on successful unstaking", async function () {
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      const tx: ContractTransactionResponse =  
+        await preLaunchStaking
+          .connect(deployer)
+          .addToken(secondTokenStaking.getAddress());
+
+      const txReceipt = await tx.wait(1) as ContractTransactionReceipt;
+
+      const blockNumber = txReceipt.blockNumber;
+      
+      const block = await ethers.provider.getBlock(blockNumber);
+      const currentTimestamp = block?.timestamp;
+      
+      await expect(tx).to.emit(preLaunchStaking, "TokenAdded").withArgs(secondTokenStaking.getAddress());
+    });
+
+    it("should emit `TokenRemoved` event on successful unstaking", async function () {
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      const tx: ContractTransactionResponse =  
+        await preLaunchStaking
+          .connect(deployer)
+          .removeToken(tokenStaking.getAddress());
+
+      const txReceipt = await tx.wait(1) as ContractTransactionReceipt;
+
+      const blockNumber = txReceipt.blockNumber;
+      
+      const block = await ethers.provider.getBlock(blockNumber);
+      const currentTimestamp = block?.timestamp;
+      
+      await expect(tx).to.emit(preLaunchStaking, "TokenRemoved").withArgs(tokenStaking.getAddress());
+    });
+
+    it("reverts if Token already whitelisted", async function () {
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      await expect(
+          preLaunchStaking.connect(deployer).addToken(tokenStaking.getAddress())
+        ).to.be.revertedWith(
+          "addToken: Token already whitelisted"
+        );
+    });
+
+    it("reverts if Token not found", async function () {
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      await expect(
+          preLaunchStaking.connect(deployer).removeToken(secondTokenStaking.getAddress())
+        ).to.be.revertedWith(
+          "removeToken: Token not found"
+        );
+    });
+  });
 });
