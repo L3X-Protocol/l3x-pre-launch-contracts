@@ -69,6 +69,7 @@ contract PreLaunchStaking is Ownable {
   function addToken(address _token) external onlyOperator {
     require(!acceptedTokens[_token], "addToken: Token already whitelisted");
     acceptedTokens[_token] = true;
+    acceptedTokensArray.push(_token);
     emit TokenAdded(_token);
   }
 
