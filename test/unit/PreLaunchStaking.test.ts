@@ -439,4 +439,53 @@ describe("PreLaunchStaking", function () {
       await expect(tx).to.emit(preLaunchStaking, "OperatorRemoved").withArgs(operator.getAddress());
     });
   });
+
+  describe("#userBalance", function () {
+    it("return user staked balance", async function () {
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      await preLaunchStaking.connect(deployer).addToken(secondTokenStaking.getAddress());
+
+      await mintAndStake(preLaunchStaking, tokenStaking, staker);
+      await mintAndStake(preLaunchStaking, secondTokenStaking, staker);
+
+      const userStakedBalances = await preLaunchStaking.getUserStakedBalances(staker);
+
+      const stakedTokens = userStakedBalances[0];
+      const stakedBalances = userStakedBalances[1];
+
+      
+      const firstTokenStakingAddress = await tokenStaking.getAddress();
+      const secondTokenStakingAddress = await secondTokenStaking.getAddress();
+      assert.include(stakedTokens, firstTokenStakingAddress);
+      assert.include(stakedTokens, secondTokenStakingAddress);
+
+      const firstTokenStakingBalance = stakedBalances[0];
+      const secondTokenStakingBalance = stakedBalances[1];
+      assert.equal(firstTokenStakingBalance.toString(), STAKING_AMOUNT.toString());
+      assert.equal(secondTokenStakingBalance.toString(), STAKING_AMOUNT.toString());
+    })
+  })
+
+  describe("#getAllAcceptedTokens", function () {
+    it("return get all accepted tokens", async function(){
+      const [, staker]: SignerWithAddress[] = await ethers.getSigners();
+      const { deployer, preLaunchStaking, tokenStaking, secondTokenStaking } =
+        await loadFixture(deployPreLaunchStakingFixture);
+
+      await preLaunchStaking.connect(deployer).addToken(secondTokenStaking);
+      const allAcceptedTokens = await preLaunchStaking.getAllAcceptedTokens();
+      const firstTokenStakingAddress = await tokenStaking.getAddress();
+      const secondTokenStakingAddress = await secondTokenStaking.getAddress();
+      assert.include(allAcceptedTokens, firstTokenStakingAddress);
+      assert.include(allAcceptedTokens, secondTokenStakingAddress);
+
+      await preLaunchStaking.connect(deployer).removeToken(tokenStaking);
+      const allAcceptedTokens_2 = await preLaunchStaking.getAllAcceptedTokens();
+      assert.include(allAcceptedTokens_2, secondTokenStakingAddress);
+    })
+
+  })
 });
