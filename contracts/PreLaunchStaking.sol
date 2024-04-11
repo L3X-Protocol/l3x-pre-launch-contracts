@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-// Import necessary components from OpenZeppelin, if needed (e.g., ERC20 interface, Ownable for admin)
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 /**
  * @title Staking Contract
  * @notice This contract allows users to stake tokens and earn rewards for staking
  * @dev Only operators can add or remove tokens acceptable for staking
  */
-contract PreLaunchStaking is Ownable {
+contract PreLaunchStaking is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+  using SafeERC20Upgradeable for IERC20Upgradeable;
+
   // Define events
   event Stake(address indexed user, address indexed token, uint256 amount, uint256 time);
   event Unstake(address indexed user, address indexed token, uint256 amount, uint256 time);
@@ -40,7 +44,9 @@ contract PreLaunchStaking is Ownable {
    * @notice Constructor sets the initial admin
    * @param initialOwner Address of the initial admin
    */
-  constructor(address initialOwner) {
+  function initialize(address initialOwner) public initializer {
+    __ReentrancyGuard_init();
+    __Ownable_init();
     addOperator(initialOwner);
   }
 
@@ -91,7 +97,7 @@ contract PreLaunchStaking is Ownable {
   function stake(address _token, uint256 _amount) external {
     require(_amount > 0, "Staking: Zero amount");
     require(acceptedTokens[_token], "Staking: Token not accepted for staking");
-    IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+    IERC20Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _amount);
     userStakes[msg.sender][_token] += _amount;
     emit Stake(msg.sender, _token, _amount, block.timestamp);
   }
@@ -105,7 +111,7 @@ contract PreLaunchStaking is Ownable {
     require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][_token] >= _amount, "UnStaking: Insufficient balance to unstake");
     userStakes[msg.sender][_token] -= _amount;
-    IERC20(_token).transfer(msg.sender, _amount);
+    IERC20Upgradeable(_token).safeTransfer(msg.sender, _amount);
     emit Unstake(msg.sender, _token, _amount, block.timestamp);
   }
 
