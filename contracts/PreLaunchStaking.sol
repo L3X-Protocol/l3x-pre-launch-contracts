@@ -1,16 +1,44 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 // Import necessary components from OpenZeppelin, if needed (e.g., ERC20 interface, Ownable for admin)
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+
+interface BridgeInterface {
+  /**
+   * @dev reference: https://github.com/ethereum-optimism/optimism/blob/65ec61dde94ffa93342728d324fecf474d228e1f/packages/contracts-bedrock/contracts/L1/L1StandardBridge.sol#L188
+   */
+  function depositERC20To(
+      address _l1Token,
+      address _l2Token,
+      address _to,
+      uint256 _amount,
+      uint32 _minGasLimit,
+      bytes calldata _extraData
+  ) external;
+
+  /**
+   * @dev reference: https://github.com/ethereum-optimism/optimism/blob/65ec61dde94ffa93342728d324fecf474d228e1f/packages/contracts-bedrock/contracts/L1/L1StandardBridge.sol#L137
+   */
+  function depositETHTo(address _to, uint32 _minGasLimit, bytes calldata _extraData) external payable;
+}
 
 /**
  * @title Staking Contract
  * @notice This contract allows users to stake tokens and earn rewards for staking
  * @dev Only operators can add or remove tokens acceptable for staking
  */
-contract PreLaunchStaking is Ownable {
+contract PreLaunchStaking is Ownable, Pausable {
+
+  using SafeERC20 for IERC20;
+  using Address for address payable;
+
+  // Constant representing the Ethereum token address.
+  address public constant ETH_TOKEN_ADDRESS = address(0x00);
+
   // Define events
   event Stake(address indexed user, address indexed token, uint256 amount, uint256 time);
   event Unstake(address indexed user, address indexed token, uint256 amount, uint256 time);
@@ -18,12 +46,11 @@ contract PreLaunchStaking is Ownable {
   event OperatorRemoved(address indexed operator);
   event TokenAdded(address indexed token);
   event TokenRemoved(address indexed token);
+  event BridgeAddress(address bridgeProxyAddress);
 
   // Array to keep track of accepted tokens for staking.
   address[] private acceptedTokensArray;
-
-  // Operators mapping
-  mapping(address => bool) public operators;
+  address public bridgeProxyAddress; // Address of the bridge contract to bridge to L3
 
   // Mapping to keep track of acceptable tokens
   mapping(address => bool) private acceptedTokens;
@@ -31,56 +58,75 @@ contract PreLaunchStaking is Ownable {
   // Mapping to keep track of user stakes
   mapping(address => mapping(address => uint256)) private userStakes;
 
-  // Modifier to restrict access to operators
-  modifier onlyOperator() {
-    require(operators[msg.sender], "Not an operator");
-    _;
-  }
   /**
    * @notice Constructor sets the initial admin
    * @param initialOwner Address of the initial admin
    */
-  constructor(address initialOwner) {
-    addOperator(initialOwner);
+  constructor(address initialOwner) Ownable(initialOwner)
+  {  
+    _addToken(ETH_TOKEN_ADDRESS);
   }
 
   /**
-   * @notice Function to add operators by admin
-   * @param _operator Address of the operator to be added
+   * @dev Function to set the address of the bridge proxy.
+   * This function allows the contract owner to set the address of the bridge proxy for token transfers between Layer 1 and Layer 2.
+   * @param _bridgeProxyAddress Address of the bridge proxy contract.
    */
-  function addOperator(address _operator) public onlyOwner {
-    operators[_operator] = true;
-    emit OperatorAdded(_operator);
+  function setBridgeProxyAddress(address _bridgeProxyAddress) external onlyOwner {
+      bridgeProxyAddress = _bridgeProxyAddress;
+      emit BridgeAddress(bridgeProxyAddress);
+  }
+
+  /** User can bridge their staked assets to L3
+  * @param _token Address of the asset to bridge
+  */
+  function bridgeAsset(address _token) external {
+    require(bridgeProxyAddress != address(0), "Bridge not ready");
+    // to do
   }
 
   /**
-   * @notice Function to remove operators by admin
-   * @param _operator Address of the operator to be removed
-   */
-  function removeOperator(address _operator) external onlyOwner {
-    operators[_operator] = false;
-    emit OperatorRemoved(_operator);
-  }
-
-  /**
-   * @notice Operators can add a new token to accept for staking
+   * @notice Owner can add a new token to accept for staking
    * @param _token Address of the token to be added
    */
-  function addToken(address _token) external onlyOperator {
+  function addToken(address _token) external onlyOwner {
     require(!acceptedTokens[_token], "addToken: Token already whitelisted");
+    _addToken(_token);
+  }
+
+  function _addToken(address _token) internal {
     acceptedTokens[_token] = true;
     acceptedTokensArray.push(_token);
     emit TokenAdded(_token);
   }
 
   /**
-   * @notice Operators can remove a token from being acceptable for staking
+   * @notice Owner can remove a token from being acceptable for staking
    * @param _token Address of the token to be removed
    */
-  function removeToken(address _token) external onlyOperator {
+  function removeToken(address _token) external onlyOwner {
     require(acceptedTokens[_token], "removeToken: Token not found");
     acceptedTokens[_token] = false;
     emit TokenRemoved(_token);
+  }
+
+  /**
+   * @notice Users can stake their ETH
+   */
+  function stakeETH() external payable {
+    userStakes[msg.sender][ETH_TOKEN_ADDRESS] += msg.value;
+    emit Stake(msg.sender, ETH_TOKEN_ADDRESS, msg.value, block.timestamp);
+  }
+
+  /**
+   * @notice Users can unstake their ETH
+   */
+  function unstakeETH(uint256 _amount) external {
+    require(_amount > 0, "UnStaking: Zero amount");
+    require(userStakes[msg.sender][ETH_TOKEN_ADDRESS] >= _amount, "UnStaking: Insufficient balance to unstake");
+    userStakes[msg.sender][ETH_TOKEN_ADDRESS] -= _amount;
+    payable(msg.sender).sendValue(_amount);
+    emit Unstake(msg.sender, ETH_TOKEN_ADDRESS, _amount, block.timestamp);
   }
 
   /**
@@ -89,6 +135,7 @@ contract PreLaunchStaking is Ownable {
    * @param _amount Amount of the token to be staked
    */
   function stake(address _token, uint256 _amount) external {
+    require(_token != address(0), "Use stakeETH");
     require(_amount > 0, "Staking: Zero amount");
     require(acceptedTokens[_token], "Staking: Token not accepted for staking");
     IERC20(_token).transferFrom(msg.sender, address(this), _amount);
@@ -102,6 +149,7 @@ contract PreLaunchStaking is Ownable {
    * @param _amount Amount of the token to be unstaked
    */
   function unstake(address _token, uint256 _amount) external {
+    require(_token != address(0), "Use unstakeETH");
     require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][_token] >= _amount, "UnStaking: Insufficient balance to unstake");
     userStakes[msg.sender][_token] -= _amount;
@@ -169,4 +217,35 @@ contract PreLaunchStaking is Ownable {
   function getUserStakedBalance(address _user, address _token) external view returns (uint256) {
     return userStakes[_user][_token];
   }
+
+  /**
+   * @dev Function to pause contract. This calls the Pausable contract.
+   */
+  function pause() external onlyOwner {
+      super._pause();
+  }
+
+  /**
+   * @dev Function to unpause contract. This calls the Pausable contract.
+   */
+  function unpause() external onlyOwner {
+      super._unpause();
+  }
+
+  /**
+   * @dev Get the Ether balance of the contract
+   * @return uint256 Ether balance of the contract
+   */
+  function getEthBalance() public view returns (uint256) {
+      return address(this).balance;
+  }
+
+  fallback() external payable {
+    revert("fallback not allowed");
+  }
+
+  receive() external payable {
+    revert("receive not allowed");
+  }
+
 }
