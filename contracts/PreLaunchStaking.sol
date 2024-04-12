@@ -6,14 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 interface BridgeInterface {
   /**
    * @dev reference: https://github.com/ethereum-optimism/optimism/blob/65ec61dde94ffa93342728d324fecf474d228e1f/packages/contracts-bedrock/contracts/L1/L1StandardBridge.sol#L188
    */
   function depositERC20To(
-      address _l1Token,
-      address _l2Token,
+      address _token,
       address _to,
       uint256 _amount,
       uint32 _minGasLimit,
@@ -31,7 +31,7 @@ interface BridgeInterface {
  * @notice This contract allows users to stake tokens and earn rewards for staking
  * @dev Only operators can add or remove tokens acceptable for staking
  */
-contract PreLaunchStaking is Ownable, Pausable {
+contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
 
   using SafeERC20 for IERC20;
   using Address for address payable;
@@ -47,7 +47,7 @@ contract PreLaunchStaking is Ownable, Pausable {
   event TokenAdded(address indexed token);
   event TokenRemoved(address indexed token);
   event BridgeAddress(address bridgeProxyAddress);
-
+  event BridgeAsset(address indexed owner, address indexed token, address indexed receiver, uint256 amount);
   // Array to keep track of accepted tokens for staking.
   address[] private acceptedTokensArray;
   address public bridgeProxyAddress; // Address of the bridge contract to bridge to L3
@@ -77,12 +77,36 @@ contract PreLaunchStaking is Ownable, Pausable {
       emit BridgeAddress(bridgeProxyAddress);
   }
 
-  /** User can bridge their staked assets to L3
-  * @param _token Address of the asset to bridge
-  */
-  function bridgeAsset(address _token) external {
-    require(bridgeProxyAddress != address(0), "Bridge not ready");
-    // to do
+  /**
+   * @dev Internal function to withdraw tokens to Layer 2.
+   * @param token Address of the token to withdraw.
+   * @param minGasLimit Minimum gas limit for each individual withdrawal transaction.
+   * @param receiver The receiver of the funds on L2.
+   */
+  function bridgeAsset(address token, uint32 minGasLimit, address receiver) external whenNotPaused nonReentrant  {
+      require(bridgeProxyAddress != address(0), "Bridge not ready");
+      uint256 transferAmount = userStakes[msg.sender][token];
+      require(transferAmount != 0, "Withdrawal completed or token never staked");
+
+      // check l2 token address set.
+      require(token == ETH_TOKEN_ADDRESS || acceptedTokens[token] == true, "token not accepted");
+
+      address bridgeAddress = bridgeProxyAddress;
+
+      userStakes[msg.sender][token] = 0;
+
+      if (token == ETH_TOKEN_ADDRESS) {
+          // Bridge Ether to Layer 2.
+          BridgeInterface(bridgeAddress).depositETHTo{value: transferAmount}(receiver, minGasLimit, hex"");
+      } else {
+          // Approve tokens for transfer to the bridge.
+          IERC20(token).approve(bridgeAddress, transferAmount);
+          // Bridge ERC20 tokens to Layer 2.
+          BridgeInterface(bridgeAddress).depositERC20To(
+              token, receiver, transferAmount, minGasLimit, hex""
+          );
+      }
+      emit BridgeAsset(msg.sender, token, receiver, transferAmount);
   }
 
   /**
@@ -113,7 +137,7 @@ contract PreLaunchStaking is Ownable, Pausable {
   /**
    * @notice Users can stake their ETH
    */
-  function stakeETH() external payable {
+  function stakeETH() external payable whenNotPaused nonReentrant {
     userStakes[msg.sender][ETH_TOKEN_ADDRESS] += msg.value;
     emit Stake(msg.sender, ETH_TOKEN_ADDRESS, msg.value, block.timestamp);
   }
@@ -121,7 +145,7 @@ contract PreLaunchStaking is Ownable, Pausable {
   /**
    * @notice Users can unstake their ETH
    */
-  function unstakeETH(uint256 _amount) external {
+  function unstakeETH(uint256 _amount) external whenNotPaused nonReentrant {
     require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][ETH_TOKEN_ADDRESS] >= _amount, "UnStaking: Insufficient balance to unstake");
     userStakes[msg.sender][ETH_TOKEN_ADDRESS] -= _amount;
@@ -134,7 +158,7 @@ contract PreLaunchStaking is Ownable, Pausable {
    * @param _token Address of the token to be staked
    * @param _amount Amount of the token to be staked
    */
-  function stake(address _token, uint256 _amount) external {
+  function stake(address _token, uint256 _amount) external whenNotPaused nonReentrant {
     require(_token != address(0), "Use stakeETH");
     require(_amount > 0, "Staking: Zero amount");
     require(acceptedTokens[_token], "Staking: Token not accepted for staking");
@@ -148,7 +172,7 @@ contract PreLaunchStaking is Ownable, Pausable {
    * @param _token Address of the token to be unstaked
    * @param _amount Amount of the token to be unstaked
    */
-  function unstake(address _token, uint256 _amount) external {
+  function unstake(address _token, uint256 _amount) external whenNotPaused nonReentrant {
     require(_token != address(0), "Use unstakeETH");
     require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][_token] >= _amount, "UnStaking: Insufficient balance to unstake");
