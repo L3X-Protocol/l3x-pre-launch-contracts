@@ -5,6 +5,7 @@ dotenv.config();
 
 // example deploy
 // npx hardhat run --network avalanche-mainnet scripts/deploy.ts
+// npx hardhat verify --network mainnet <address>
 
 const PUBLIC_KEY = process.env.PUBLIC_KEY || '';
 
@@ -31,3 +32,13 @@ main()
     console.error(error);
     process.exit(1);
   });
+
+  // deployments
+
+  // ETH MAINNET:
+  // PreLaunch Proxy deployed to: 0xC5928F4e742873356e8126bda92B02e7C86F043b
+  // PreLaunch implementation address at: 0xbf09C571549B4A03Bf116a926682bF3CfaeBAF8d
+
+  // Arbitrum
+  // PreLaunch Proxy deployed to: 0x0809F0Ee8e72b2e2069e0f618cBbCB2399D452c7
+  // PreLaunch implementation address at: 0xBe4269c4AC77cF2Ea71148340280B87Df988fC30

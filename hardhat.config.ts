@@ -60,17 +60,17 @@ const config: HardhatUserConfig = {
       accounts: [`${process.env.PRIVATE_KEY as string}`],
     },
     'linea_mainnet': {
-      url: "https://lineascan.build",
+      url: "https://mainnet.infura.io/v3/",
       chainId: 59144,
       accounts: [`${process.env.PRIVATE_KEY as string}`],
     },
     'blast': {
-      url: "https://blastscan.io",
+      url: "https://rpc.blast.io",
       chainId: 81457,
       accounts: [`${process.env.PRIVATE_KEY as string}`],
     },
     'mode': {
-      url: "https://explorer.mode.network/",
+      url: "https://1rpc.io/mode",
       chainId: 34443,
       accounts: [`${process.env.PRIVATE_KEY as string}`],
     },
@@ -116,8 +116,16 @@ const config: HardhatUserConfig = {
         network: "blast",
         chainId: 81457,
         urls: {
-          apiURL: "https://rpc.blast.io",
+          apiURL: "https://blastscan.io/api",
           browserURL: "https://blastscan.io"
+        }
+      },
+      {
+        network: "mode",
+        chainId: 34443,
+        urls: {
+          apiURL: "https://explorer.mode.network/api",
+          browserURL: "https://explorer.mode.network"
         }
       }
     ]
