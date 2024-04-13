@@ -1,83 +1,128 @@
-import * as dotenv from "dotenv";
-
+import "@openzeppelin/hardhat-upgrades"
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-verify";
+require('dotenv').config();
 
-dotenv.config();
-const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
-const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || `https://eth-mainnet.g.alchemyapi.io/v2/${ALCHEMY_KEY}`;
-const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`;
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-
-// // optional
-// const MNEMONIC = process.env.MNEMONIC || 'Your mnemonic';
-// const FORKING_BLOCK_NUMBER = process.env.FORKING_BLOCK_NUMBER;
-
-// Your API key for Etherscan, obtain one at https://etherscan.io/
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "Your etherscan API key";
+// For verification
+// https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify
+// npx hardhat verify --list-networks
+// npx hardhat verify --network base <address>
 
 const config: HardhatUserConfig = {
-  defaultNetwork: "sepolia",
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  },
   networks: {
-    hardhat: {
-      // hardfork: 'merge',
-      // // If you want to do some forking set `enabled` to true
-      // forking: {
-      //   url: MAINNET_RPC_URL,
-      //   blockNumber: Number(FORKING_BLOCK_NUMBER),
-      //   enabled: false,
-      // },
-      chainId: 31337,
-      allowUnlimitedContractSize: true,
+    'base': {
+      url: 'https://mainnet.base.org',
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+      chainId: 8453,
     },
-    localhost: {
-      chainId: 31337,
-      allowUnlimitedContractSize: true,
+    'avalanche': {
+      url: 'https://api.avax.network/ext/bc/C/rpc',
+      chainId: 43114,
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
     },
-    sepolia: {
-      url: SEPOLIA_RPC_URL !== undefined ? SEPOLIA_RPC_URL : "",
-      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
-      //   accounts: {
-      //     mnemonic: MNEMONIC,
-      //   },
-      chainId: 11155111,
+    'mantle': {
+      url: 'https://rpc.mantle.xyz',
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+      chainId: 5000
     },
-    mainnet: {
-      url: MAINNET_RPC_URL,
-      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
-      //   accounts: {
-      //     mnemonic: MNEMONIC,
-      //   },
-      chainId: 1,
+    'mainnet': {
+      url: 'https://mainnet.infura.io/v3/149e969a221349be9b2857c1cb9090ef',
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+      chainId: 1
+    },
+    'arbitrumOne': {
+      url: "https://arb1.arbitrum.io/rpc",
+      chainId: 42161,
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+    },
+    'bsc': {
+      url: "https://bsc-dataseed.binance.org",
+      chainId: 56,
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+    },
+    'polygon': {
+      url: "https://polygon-rpc.com",
+      chainId: 137,
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+    },
+    'optimisticEthereum': {
+      url: "https://mainnet.optimism.io",
+      chainId: 10,
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+    },
+    'linea_mainnet': {
+      url: "https://lineascan.build",
+      chainId: 59144,
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+    },
+    'blast': {
+      url: "https://blastscan.io",
+      chainId: 81457,
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
+    },
+    'mode': {
+      url: "https://explorer.mode.network/",
+      chainId: 34443,
+      accounts: [`${process.env.PRIVATE_KEY as string}`],
     },
   },
   etherscan: {
-    // yarn hardhat verify --network <NETWORK> <CONTRACT_ADDRESS> <CONSTRUCTOR_PARAMETERS>
     apiKey: {
-      // npx hardhat verify --list-networks
-      sepolia: ETHERSCAN_API_KEY,
-      mainnet: ETHERSCAN_API_KEY
+        mainnet: process.env.MAINNET,
+        optimisticEthereum: process.env.OPTIMISM,
+        bsc: process.env.BSC,
+        avalanche: process.env.AVALANCHE,
+        arbitrumOne: process.env.ARBITRUM,
+        polygon: process.env.POLYGON,
+        base: process.env.BASE,
+        linea_mainnet: process.env.LINEA,
+        mantle: '',
     },
-  },
-  gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
-    // currency: 'USD',
-    outputFile: "gas-report.txt",
-    noColors: true,
-    // coinmarketcap: process.env.COINMARKETCAP_API_KEY,
-  },
-
-  solidity: {
-    compilers: [
+    customChains: [
       {
-        version: "0.8.20",
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org"
+        }
       },
-    ],
+      {
+        network: "mantle",
+        chainId: 5000,
+        urls: {
+          apiURL: "https://explorer.mantle.xyz/api",
+          browserURL: "https://explorer.mantle.xyz"
+        }
+      },
+      {
+        network: "linea_mainnet",
+        chainId: 59144,
+        urls: {
+          apiURL: "https://api.lineascan.build/api",
+          browserURL: "https://lineascan.build/"
+        }
+      },
+      {
+        network: "blast",
+        chainId: 81457,
+        urls: {
+          apiURL: "https://rpc.blast.io",
+          browserURL: "https://blastscan.io"
+        }
+      }
+    ]
   },
-  mocha: {
-    timeout: 200000, // 200 seconds max for running tests
-  },
+  defaultNetwork: 'hardhat',
 };
 
 export default config;

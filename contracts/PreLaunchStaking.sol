@@ -21,11 +21,6 @@ interface BridgeInterface {
         uint32 _minGasLimit,
         bytes calldata _extraData
     ) external;
-
-    /**
-     * @dev reference: https://github.com/ethereum-optimism/optimism/blob/65ec61dde94ffa93342728d324fecf474d228e1f/packages/contracts-bedrock/contracts/L1/L1StandardBridge.sol#L137
-     */
-    function depositETHTo(address _to, uint32 _minGasLimit, bytes calldata _extraData) external payable;
 }
 
 /**
@@ -36,9 +31,6 @@ interface BridgeInterface {
 contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using Address for address payable;
-
-    // Constant representing the Ethereum token address.
-    address public constant ETH_TOKEN_ADDRESS = address(0);
 
     // Array to keep track of accepted tokens for staking.
     address[] private acceptedTokensArray;
@@ -68,8 +60,6 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
         __Pausable_init();
         __Ownable_init(_initialOwner);
         __ReentrancyGuard_init();
-
-        _addToken(ETH_TOKEN_ADDRESS);
     }
 
     fallback() external payable {
@@ -85,34 +75,11 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Users can stake their ETH
-     */
-    function stakeETH() external payable whenNotPaused nonReentrant {
-        require(msg.value > 0, "Stake: Zero amount");
-        userStakes[msg.sender][ETH_TOKEN_ADDRESS] += msg.value;
-        stakedAmounts[ETH_TOKEN_ADDRESS] += msg.value;
-        emit Staked(msg.sender, ETH_TOKEN_ADDRESS, msg.value, block.timestamp);
-    }
-
-    /**
-     * @notice Users can unstake their ETH
-     */
-    function unstakeETH(uint256 _amount) external nonReentrant {
-        require(_amount > 0, "Unstake: Zero amount");
-        require(userStakes[msg.sender][ETH_TOKEN_ADDRESS] >= _amount, "Unstake: Insufficient balance to unstake");
-        userStakes[msg.sender][ETH_TOKEN_ADDRESS] -= _amount;
-        stakedAmounts[ETH_TOKEN_ADDRESS] -= _amount;
-        payable(msg.sender).sendValue(_amount);
-        emit Unstaked(msg.sender, ETH_TOKEN_ADDRESS, _amount, block.timestamp);
-    }
-
-    /**
      * @notice Users can stake their ERC20 tokens
      * @param _token Address of the token to be staked
      * @param _amount Amount of the token to be staked
      */
     function stake(address _token, uint256 _amount) external whenNotPaused nonReentrant {
-        require(_token != ETH_TOKEN_ADDRESS, "Use stakeETH");
         require(_amount > 0, "Stake: Zero amount");
         require(acceptedTokens[_token], "Stake: Token not accepted for staking");
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
@@ -127,7 +94,6 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
      * @param _amount Amount of the token to be unstaked
      */
     function unstake(address _token, uint256 _amount) external nonReentrant {
-        require(_token != ETH_TOKEN_ADDRESS, "Use unstakeETH");
         require(_amount > 0, "Unstake: Zero amount");
         require(userStakes[msg.sender][_token] >= _amount, "Unstake: Insufficient balance to unstake");
         userStakes[msg.sender][_token] -= _amount;
@@ -152,14 +118,10 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
         userStakes[msg.sender][_token] = 0;
         stakedAmounts[_token] -= transferAmount;
 
-        if (_token == ETH_TOKEN_ADDRESS) {
-            // bridge ETH
-            BridgeInterface(bridgeAddress).depositETHTo{value: transferAmount}(_receiver, _minGasLimit, hex"");
-        } else {
-            // bridge ERC20 token
-            IERC20(_token).approve(bridgeAddress, transferAmount);
-            BridgeInterface(bridgeAddress).depositERC20To(_token, _receiver, transferAmount, _minGasLimit, hex"");
-        }
+        // bridge ERC20 token
+        IERC20(_token).approve(bridgeAddress, transferAmount);
+        BridgeInterface(bridgeAddress).depositERC20To(_token, _receiver, transferAmount, _minGasLimit, hex"");
+        
         emit AssetBridged(msg.sender, _token, _receiver, transferAmount);
     }
 
@@ -227,14 +189,6 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
      */
     function getUserTokenStakedBalance(address _user, address _token) external view returns (uint256) {
         return userStakes[_user][_token];
-    }
-
-    /**
-     * @dev Get the Ether balance of the contract
-     * @return uint256 Ether balance of the contract
-     */
-    function getEthBalance() public view returns (uint256) {
-        return address(this).balance;
     }
 
     /*//////////////////////////////////////////////////////////////
