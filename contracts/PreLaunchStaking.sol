@@ -145,7 +145,7 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
   /**
    * @notice Users can unstake their ETH
    */
-  function unstakeETH(uint256 _amount) external whenNotPaused nonReentrant {
+  function unstakeETH(uint256 _amount) external nonReentrant {
     require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][ETH_TOKEN_ADDRESS] >= _amount, "UnStaking: Insufficient balance to unstake");
     userStakes[msg.sender][ETH_TOKEN_ADDRESS] -= _amount;
@@ -172,7 +172,7 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
    * @param _token Address of the token to be unstaked
    * @param _amount Amount of the token to be unstaked
    */
-  function unstake(address _token, uint256 _amount) external whenNotPaused nonReentrant {
+  function unstake(address _token, uint256 _amount) external nonReentrant {
     require(_token != address(0), "Use unstakeETH");
     require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][_token] >= _amount, "UnStaking: Insufficient balance to unstake");
