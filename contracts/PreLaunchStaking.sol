@@ -58,6 +58,9 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
   // Mapping to keep track of user stakes
   mapping(address => mapping(address => uint256)) private userStakes;
 
+  // Mapping to keep track of staked amount
+  mapping(address => uint256) public stakedAmounts;
+
   /**
    * @notice Constructor sets the initial admin
    * @param initialOwner Address of the initial admin
@@ -94,6 +97,7 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
       address bridgeAddress = bridgeProxyAddress;
 
       userStakes[msg.sender][token] = 0;
+      stakedAmounts[token] -= transferAmount;
 
       if (token == ETH_TOKEN_ADDRESS) {
           // Bridge Ether to Layer 2.
@@ -139,6 +143,7 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
    */
   function stakeETH() external payable whenNotPaused nonReentrant {
     userStakes[msg.sender][ETH_TOKEN_ADDRESS] += msg.value;
+    stakedAmounts[ETH_TOKEN_ADDRESS] += msg.value;
     emit Stake(msg.sender, ETH_TOKEN_ADDRESS, msg.value, block.timestamp);
   }
 
@@ -149,6 +154,7 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
     require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][ETH_TOKEN_ADDRESS] >= _amount, "UnStaking: Insufficient balance to unstake");
     userStakes[msg.sender][ETH_TOKEN_ADDRESS] -= _amount;
+    stakedAmounts[ETH_TOKEN_ADDRESS] -= _amount;
     payable(msg.sender).sendValue(_amount);
     emit Unstake(msg.sender, ETH_TOKEN_ADDRESS, _amount, block.timestamp);
   }
@@ -164,6 +170,7 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
     require(acceptedTokens[_token], "Staking: Token not accepted for staking");
     IERC20(_token).transferFrom(msg.sender, address(this), _amount);
     userStakes[msg.sender][_token] += _amount;
+    stakedAmounts[_token] += _amount;
     emit Stake(msg.sender, _token, _amount, block.timestamp);
   }
 
@@ -177,6 +184,7 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
     require(_amount > 0, "UnStaking: Zero amount");
     require(userStakes[msg.sender][_token] >= _amount, "UnStaking: Insufficient balance to unstake");
     userStakes[msg.sender][_token] -= _amount;
+    stakedAmounts[_token] -= _amount;
     IERC20(_token).transfer(msg.sender, _amount);
     emit Unstake(msg.sender, _token, _amount, block.timestamp);
   }
@@ -254,6 +262,12 @@ contract PreLaunchStaking is Ownable, Pausable, ReentrancyGuard {
    */
   function unpause() external onlyOwner {
       super._unpause();
+  }
+
+  function resuceToken(address _token) external onlyOwner {
+      uint256 amount = IERC20(_token).balanceOf(address(this)) - stakedAmounts[_token];
+      require(amount > 0, "nothing to rescue");
+      IERC20(_token).transfer(owner(), amount);
   }
 
   /**
