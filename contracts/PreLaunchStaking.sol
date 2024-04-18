@@ -33,14 +33,14 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
     using Address for address payable;
 
     // Array to keep track of accepted tokens for staking.
-    address[] private acceptedTokensArray;
+    address[] public acceptedTokensArray;
     address public bridgeProxyAddress; // Address of the bridge contract to bridge to L3
 
     // Mapping to keep track of acceptable tokens
-    mapping(address => bool) private acceptedTokens;
+    mapping(address => bool) public acceptedTokens;
 
     // Mapping to keep track of user stakes
-    mapping(address => mapping(address => uint256)) private userStakes;
+    mapping(address => mapping(address => uint256)) public userStakes;
 
     // Mapping to keep track of staked amount
     mapping(address => uint256) public stakedAmounts;
@@ -50,6 +50,7 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
     event AssetBridged(address indexed owner, address indexed token, address indexed receiver, uint256 amount);
     event BridgeAddressSet(address bridgeAddress);
     event TokenAdded(address indexed token);
+    event TokenReAdded(address indexed token);
     event TokenRemoved(address indexed token);
 
     /**
@@ -121,7 +122,7 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
         // bridge ERC20 token
         IERC20(_token).approve(bridgeAddress, transferAmount);
         BridgeInterface(bridgeAddress).depositERC20To(_token, _receiver, transferAmount, _minGasLimit, hex"");
-        
+
         emit AssetBridged(msg.sender, _token, _receiver, transferAmount);
     }
 
@@ -217,6 +218,16 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
         acceptedTokens[_token] = true;
         acceptedTokensArray.push(_token);
         emit TokenAdded(_token);
+    }
+
+    /**
+     * @dev Owner can re-add an existing token to accept for staking.
+     * @dev Only for existing token in acceptedTokens array
+     * @param _token Address of the token to be re-added.
+     */
+    function reAddToken(address _token) external onlyOwner {
+        acceptedTokens[_token] = true;
+        emit TokenReAdded(_token);
     }
 
     /**
