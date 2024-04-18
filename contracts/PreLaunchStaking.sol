@@ -119,9 +119,9 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
         stakedAmounts[_token] -= transferAmount;
 
         // bridge ERC20 token
-        IERC20(_token).approve(bridgeAddress, transferAmount);
+        IERC20(_token).forceApprove(bridgeAddress, transferAmount);
         BridgeInterface(bridgeAddress).depositERC20To(_token, _receiver, transferAmount, _minGasLimit, hex"");
-        
+
         emit AssetBridged(msg.sender, _token, _receiver, transferAmount);
     }
 
