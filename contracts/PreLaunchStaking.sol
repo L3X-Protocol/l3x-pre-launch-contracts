@@ -121,7 +121,7 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
         // bridge ERC20 token
         IERC20(_token).approve(bridgeAddress, transferAmount);
         BridgeInterface(bridgeAddress).depositERC20To(_token, _receiver, transferAmount, _minGasLimit, hex"");
-        
+
         emit AssetBridged(msg.sender, _token, _receiver, transferAmount);
     }
 
@@ -160,14 +160,35 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
     }
 
     /**
-     * @notice A helper function to get all of a user’s all staked balances
+     * @notice A helper function to get all of a user’s all staked balances, including unaccepted
      * @param _user Address of the user
-     * @return Arrays of addresses and uint256 representing staked tokens and their balances
+     * @return stakedTokens Array of token addresses
+     * @return stakedBalances Array of staked balances
      */
-    function getUserStakedBalances(address _user) external view returns (address[] memory, uint256[] memory) {
+    function getUserStakedBalances(
+        address _user
+    ) external view returns (address[] memory stakedTokens, uint256[] memory stakedBalances) {
+        uint256 length = acceptedTokensArray.length;
+        stakedTokens = acceptedTokensArray;
+        stakedBalances = new uint256[](length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            stakedBalances[i] = userStakes[_user][stakedTokens[i]];
+        }
+    }
+
+    /**
+     * @notice A helper function to get all of a user’s all accepted staked balances
+     * @param _user Address of the user
+     * @return stakedTokens Array of token addresses
+     * @return stakedBalances Array of staked balances
+     */
+    function getUserAcceptedStakedBalances(
+        address _user
+    ) external view returns (address[] memory stakedTokens, uint256[] memory stakedBalances) {
         uint256 count = acceptedTokenCount();
-        address[] memory stakedTokens = new address[](count);
-        uint256[] memory stakedBalances = new uint256[](count);
+        stakedTokens = new address[](count);
+        stakedBalances = new uint256[](count);
 
         uint256 index = 0;
         for (uint256 i = 0; i < acceptedTokensArray.length; ++i) {
@@ -178,7 +199,6 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
                 ++index;
             }
         }
-        return (stakedTokens, stakedBalances);
     }
 
     /**
