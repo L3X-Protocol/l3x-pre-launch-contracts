@@ -42,3 +42,15 @@ main()
   // Arbitrum
   // PreLaunch Proxy deployed to: 0x0809F0Ee8e72b2e2069e0f618cBbCB2399D452c7
   // PreLaunch implementation address at: 0xBe4269c4AC77cF2Ea71148340280B87Df988fC30
+
+  // Linea
+  // PreLaunch Proxy deployed to: 0x0809F0Ee8e72b2e2069e0f618cBbCB2399D452c7
+  // PreLaunch implementation address at: 0xBe4269c4AC77cF2Ea71148340280B87Df988fC30
+
+  // Mode
+  // PreLaunch Proxy deployed to: 0x0809F0Ee8e72b2e2069e0f618cBbCB2399D452c7
+  // PreLaunch implementation address at: 0xBe4269c4AC77cF2Ea71148340280B87Df988fC30
+
+  // Blast
+  // PreLaunch Proxy deployed to: 0x0809F0Ee8e72b2e2069e0f618cBbCB2399D452c7
+  // PreLaunch implementation address at: 0xBe4269c4AC77cF2Ea71148340280B87Df988fC30

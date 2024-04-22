@@ -60,7 +60,7 @@ const config: HardhatUserConfig = {
       accounts: [`${process.env.PRIVATE_KEY as string}`],
     },
     'linea_mainnet': {
-      url: "https://mainnet.infura.io/v3/",
+      url: "https://linea-mainnet.infura.io/v3/c43038e8294c41ab9c2c4a95893a5a33",
       chainId: 59144,
       accounts: [`${process.env.PRIVATE_KEY as string}`],
     },
@@ -85,7 +85,9 @@ const config: HardhatUserConfig = {
         polygon: process.env.POLYGON,
         base: process.env.BASE,
         linea_mainnet: process.env.LINEA,
-        mantle: '',
+        mode: 'mode',
+        blast: process.env.BLAST,
+        mantle: 'mantle',
     },
     customChains: [
       {
@@ -116,7 +118,7 @@ const config: HardhatUserConfig = {
         network: "blast",
         chainId: 81457,
         urls: {
-          apiURL: "https://blastscan.io/api",
+          apiURL: "https://api.blastscan.io/api",
           browserURL: "https://blastscan.io"
         }
       },
