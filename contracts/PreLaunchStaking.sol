@@ -136,10 +136,11 @@ contract PreLaunchStaking is Initializable, PausableUpgradeable, Ownable2StepUpg
     function getAllAcceptedTokens() external view returns (address[] memory) {
         address[] memory result = new address[](acceptedTokenCount());
         uint256 index = 0;
-        for (uint256 i = 0; i < acceptedTokensArray.length; i++) {
-            if (acceptedTokens[acceptedTokensArray[i]]) {
-                result[index] = acceptedTokensArray[i];
-                index++;
+        for (uint256 i = 0; i < acceptedTokensArray.length; ++i) {
+            address token = acceptedTokensArray[i];
+            if (acceptedTokens[token]) {
+                result[index] = token;
+                ++index;
             }
         }
         return result;
