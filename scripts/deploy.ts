@@ -37,11 +37,11 @@ main()
 
   // ETH MAINNET:
   // PreLaunch Proxy deployed to: 0xC5928F4e742873356e8126bda92B02e7C86F043b
-  // PreLaunch implementation address at: 0xbf09C571549B4A03Bf116a926682bF3CfaeBAF8d
+  // PreLaunch implementation address at: 0x1F803A31d4d1024Da0a9327850c8d9b3e7143F6A
 
   // Arbitrum
   // PreLaunch Proxy deployed to: 0x0809F0Ee8e72b2e2069e0f618cBbCB2399D452c7
-  // PreLaunch implementation address at: 0xBe4269c4AC77cF2Ea71148340280B87Df988fC30
+  // PreLaunch implementation address at: 0xd6cB127C9974507054f38d806aaEF66651d378ca
 
   // Linea
   // PreLaunch Proxy deployed to: 0x0809F0Ee8e72b2e2069e0f618cBbCB2399D452c7
@@ -53,4 +53,4 @@ main()
 
   // Blast
   // PreLaunch Proxy deployed to: 0x0809F0Ee8e72b2e2069e0f618cBbCB2399D452c7
-  // PreLaunch implementation address at: 0xBe4269c4AC77cF2Ea71148340280B87Df988fC30
+  // PreLaunch implementation address at: 0xC5928F4e742873356e8126bda92B02e7C86F043b
